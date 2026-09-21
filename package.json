@@ -1,0 +1,21 @@
+{
+  "name": "joineasy-task-2-academic-nexus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full Stack Round 2 Academic Assignment and Course Management Platform",
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "seed": "npm --prefix backend run seed",
+    "test": "npm --prefix backend run test",
+    "build": "npm --prefix frontend run build"
+  },
+  "keywords": [
+    "react",
+    "express",
+    "postgresql",
+    "tailwindcss",
+    "academic-management"
+  ],
+  "author": "",
+  "license": "ISC"
+}
