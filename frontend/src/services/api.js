@@ -1,5 +1,12 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+// Central API Client Configuration
+const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api';
 
+// Normalize API URL to ensure no trailing slash
+export const API_URL = rawApiUrl.replace(/\/+$/, '');
+
+/**
+ * Universal request handler with automatic JWT token attachment and error extraction
+ */
 export async function request(endpoint, options = {}) {
   const token = localStorage.getItem('nexus_token');
   
@@ -15,12 +22,15 @@ export async function request(endpoint, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined
   };
 
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = `${API_URL}${cleanEndpoint}`;
+
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, config);
+    const res = await fetch(fullUrl, config);
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      // If token expired / unauthorized, trigger logout event if needed
+      // If token expired / unauthorized, clear session and dispatch notification
       if (res.status === 401 && token) {
         localStorage.removeItem('nexus_token');
         localStorage.removeItem('nexus_user');
@@ -35,7 +45,7 @@ export async function request(endpoint, options = {}) {
     return data;
   } catch (err) {
     if (!err.status) {
-      err.message = 'Unable to connect to server. Please ensure the backend is running.';
+      err.message = 'Unable to connect to backend server. Please verify network connection or server status.';
     }
     throw err;
   }

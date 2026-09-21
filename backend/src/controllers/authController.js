@@ -169,24 +169,8 @@ async function getMe(req, res, next) {
   }
 }
 
-// GET /api/auth/demo-accounts
-async function getDemoAccounts(req, res, next) {
-  try {
-    const result = await db.query(
-      'SELECT id, name, email, role, avatar_url FROM users ORDER BY role DESC, id ASC'
-    );
-    return res.status(200).json({
-      success: true,
-      accounts: result.rows
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
 module.exports = {
   register,
   login,
-  getMe,
-  getDemoAccounts
+  getMe
 };

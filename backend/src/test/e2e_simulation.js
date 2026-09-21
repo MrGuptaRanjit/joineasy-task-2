@@ -1,4 +1,4 @@
-const baseUrl = 'http://localhost:5000/api';
+const baseUrl = process.env.TEST_API_URL || process.env.API_URL || `http://localhost:${process.env.PORT || 5000}/api`;
 
 async function req(path, opt = {}) {
   const res = await fetch(`${baseUrl}${path}`, {

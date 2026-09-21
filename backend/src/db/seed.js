@@ -1,9 +1,20 @@
 const bcrypt = require('bcryptjs');
 const db = require('./dbClient');
+const env = require('../config/env');
 
 async function seed() {
   console.log('🌱 Starting database seeding...');
-  await db.initDb();
+  
+  if (!env.DATABASE_URL) {
+    console.error('❌ Error: DATABASE_URL environment variable is required to run seed.');
+    process.exit(1);
+  }
+
+  const pool = await db.initDb();
+  if (!pool) {
+    console.error('❌ Seeding failed: Unable to establish connection to PostgreSQL.');
+    process.exit(1);
+  }
 
   // Clear existing tables in reverse dependency order
   const clearQueries = [
@@ -20,7 +31,7 @@ async function seed() {
     try {
       await db.query(q);
     } catch (e) {
-      // Ignore if table is empty
+      // Table may not exist or be empty yet
     }
   }
 
@@ -73,8 +84,7 @@ async function seed() {
       `INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [u.name, u.email, defaultPasswordHash, u.role, u.avatar]
     );
-    const row = (await db.query('SELECT id FROM users WHERE email = $1', [u.email])).rows[0];
-    userIds[u.email] = row ? row.id : res.rows[0]?.id;
+    userIds[u.email] = res.rows[0]?.id;
   }
 
   // 2. Insert Courses
@@ -105,12 +115,11 @@ async function seed() {
 
   const courseIds = {};
   for (const c of coursesToInsert) {
-    await db.query(
-      `INSERT INTO courses (code, name, description, semester, professor_id) VALUES ($1, $2, $3, $4, $5)`,
+    const res = await db.query(
+      `INSERT INTO courses (code, name, description, semester, professor_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [c.code, c.name, c.description, c.semester, c.professor_id]
     );
-    const row = (await db.query('SELECT id FROM courses WHERE code = $1', [c.code])).rows[0];
-    courseIds[c.code] = row.id;
+    courseIds[c.code] = res.rows[0]?.id;
   }
 
   // 3. Insert Enrollments
@@ -122,7 +131,6 @@ async function seed() {
     await db.query(`INSERT INTO course_enrollments (course_id, student_id) VALUES ($1, $2)`, [courseIds['CS-301'], sId]);
     await db.query(`INSERT INTO course_enrollments (course_id, student_id) VALUES ($1, $2)`, [courseIds['CS-305'], sId]);
   }
-  // Marcus and Rahul also in CS-402
   await db.query(`INSERT INTO course_enrollments (course_id, student_id) VALUES ($1, $2)`, [courseIds['CS-402'], userIds['rahul@university.edu']]);
   await db.query(`INSERT INTO course_enrollments (course_id, student_id) VALUES ($1, $2)`, [courseIds['CS-402'], userIds['marcus@university.edu']]);
 
@@ -173,13 +181,12 @@ async function seed() {
 
   const assignmentIds = {};
   for (const a of assignmentsToInsert) {
-    await db.query(
+    const res = await db.query(
       `INSERT INTO assignments (course_id, title, description, deadline, submission_type, max_score, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [a.course_id, a.title, a.description, a.deadline, a.submission_type, a.max_score, a.created_by]
     );
-    const row = (await db.query('SELECT id FROM assignments WHERE title = $1', [a.title])).rows[0];
-    assignmentIds[a.key] = row.id;
+    assignmentIds[a.key] = res.rows[0]?.id;
   }
 
   // 5. Insert Groups & Group Members
@@ -187,12 +194,11 @@ async function seed() {
   
   // Group 1 for Assignment 2 (CS-301 Team Project)
   // Leader: Rahul Sharma, Members: Alex Chen, Priya Patel
-  await db.query(
-    `INSERT INTO groups (assignment_id, name, leader_id) VALUES ($1, $2, $3)`,
+  const g1Res = await db.query(
+    `INSERT INTO groups (assignment_id, name, leader_id) VALUES ($1, $2, $3) RETURNING id`,
     [assignmentIds['A2'], 'Alpha Tech Innovators', userIds['rahul@university.edu']]
   );
-  const group1Row = (await db.query('SELECT id FROM groups WHERE name = $1', ['Alpha Tech Innovators'])).rows[0];
-  const group1Id = group1Row.id;
+  const group1Id = g1Res.rows[0]?.id;
 
   // Add members
   await db.query(`INSERT INTO group_members (group_id, student_id) VALUES ($1, $2)`, [group1Id, userIds['rahul@university.edu']]);
@@ -201,12 +207,11 @@ async function seed() {
 
   // Group 2 for Assignment 3 (CS-305)
   // Leader: Marcus Brown, Member: Alex Chen
-  await db.query(
-    `INSERT INTO groups (assignment_id, name, leader_id) VALUES ($1, $2, $3)`,
+  const g2Res = await db.query(
+    `INSERT INTO groups (assignment_id, name, leader_id) VALUES ($1, $2, $3) RETURNING id`,
     [assignmentIds['A3'], 'Cloud Architects', userIds['marcus@university.edu']]
   );
-  const group2Row = (await db.query('SELECT id FROM groups WHERE name = $1', ['Cloud Architects'])).rows[0];
-  const group2Id = group2Row.id;
+  const group2Id = g2Res.rows[0]?.id;
   await db.query(`INSERT INTO group_members (group_id, student_id) VALUES ($1, $2)`, [group2Id, userIds['marcus@university.edu']]);
   await db.query(`INSERT INTO group_members (group_id, student_id) VALUES ($1, $2)`, [group2Id, userIds['alex@university.edu']]);
 
@@ -260,20 +265,15 @@ async function seed() {
   );
 
   console.log('✨ Database successfully seeded!');
-  console.log('==================================================');
-  console.log('DEMO ACCOUNTS READY:');
-  console.log('👨‍🏫 Professor: robert@university.edu / Password123!');
-  console.log('👨‍🏫 Professor: elena@university.edu / Password123!');
-  console.log('👑 Student (Leader): rahul@university.edu / Password123!');
-  console.log('👤 Student (Member): alex@university.edu / Password123!');
-  console.log('👤 Student (Member): priya@university.edu / Password123!');
-  console.log('👤 Student (Solo):   marcus@university.edu / Password123!');
-  console.log('==================================================');
 }
 
 if (require.main === module) {
-  seed().catch(err => {
+  seed().then(async () => {
+    await db.closeDb();
+    process.exit(0);
+  }).catch(async (err) => {
     console.error('❌ Seeding failed:', err);
+    await db.closeDb();
     process.exit(1);
   });
 }
