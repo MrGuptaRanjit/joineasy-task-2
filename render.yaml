@@ -29,5 +29,5 @@ services:
 databases:
   - name: academic-nexus-db
     databaseName: academic_nexus
-    user: postgres
+    user: academic_user
     plan: free
