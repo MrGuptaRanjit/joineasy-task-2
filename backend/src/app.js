@@ -76,6 +76,18 @@ if (env.NODE_ENV === 'development') {
   }));
 }
 
+// Root Welcome & Status Endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    name: 'Academic Nexus Backend API',
+    version: '1.0.0',
+    status: 'online',
+    healthCheck: '/api/health',
+    documentation: 'API endpoints mounted under /api/*'
+  });
+});
+
 // Health Check Endpoint (Unauthenticated, safe, reliable)
 app.get('/api/health', async (req, res) => {
   const dbConnected = db.getIsConnected();
