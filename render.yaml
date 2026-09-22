@@ -1,0 +1,33 @@
+services:
+  # Academic Nexus Express API Service
+  - type: web
+    name: academic-nexus-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DATABASE_URL
+        fromDatabase:
+          name: academic-nexus-db
+          property: connectionString
+      - key: FRONTEND_URL
+        value: http://localhost:5173
+
+# Managed PostgreSQL Database on Render
+databases:
+  - name: academic-nexus-db
+    databaseName: academic_nexus
+    user: postgres
+    plan: free
