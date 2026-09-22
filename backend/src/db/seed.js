@@ -6,14 +6,12 @@ async function seed() {
   console.log('🌱 Starting database seeding...');
   
   if (!env.DATABASE_URL) {
-    console.error('❌ Error: DATABASE_URL environment variable is required to run seed.');
-    process.exit(1);
+    throw new Error('DATABASE_URL environment variable is required to run seed.');
   }
 
   const pool = await db.initDb();
   if (!pool) {
-    console.error('❌ Seeding failed: Unable to establish connection to PostgreSQL.');
-    process.exit(1);
+    throw new Error('Seeding failed: Unable to establish connection to PostgreSQL.');
   }
 
   // Clear existing tables in reverse dependency order
